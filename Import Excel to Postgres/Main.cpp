@@ -6,6 +6,7 @@
 #include <fstream>
 #include <filesystem>
 #include <thread>
+#include <Windows.h>
 
 typedef struct Settings
 {
@@ -28,9 +29,46 @@ bool iniParse(Settings& params);
 std::string constructInsertScript(nanodbc::result& results, Settings& setting);
 std::vector<std::filesystem::path> findFile(std::string path);
 
-int main()
+int main(int argc, char* argv[])
 {
     setlocale(LC_ALL, "Russian");
+
+	std::string version = "0.0.1";
+
+	bool once = false;
+	bool help = false;
+	bool hide = false;
+	bool showVersoin = false;
+
+	for (int i = 0; i < argc; i++)
+	{
+		std::string arg = argv[i];
+		if (arg == "once")
+			once = true;
+		if (arg == "help")
+			help = true;
+		if (arg == "hide")
+			hide = true;
+		if (arg == "version")
+			showVersoin = true;			
+	}
+
+	if (help)
+	{
+		std::cout << "once - для прохождения цикла 1 раз, после чего программа выключается" << std::endl;
+		std::cout << "hide - запустить программу без консоли" << std::endl;
+		std::cout << "showVersoin - показать версию" << std::endl;
+		std::cout << "help - помощь" << std::endl;
+		system("pause");
+		return 0;
+	}
+	
+	if (hide)
+	{
+		::ShowWindow(::GetConsoleWindow(), SW_HIDE);
+	}
+	
+
     Settings setting;
 
     std::ofstream logfile(setting.logFileName, std::ios::app);
@@ -43,6 +81,12 @@ int main()
     }
 
 	logfile << currentTime() << "Starting..." << std::endl;
+
+	if (showVersoin)
+	{
+		logfile << currentTime() << "Version: " << version << std::endl;
+		std::cout << currentTime() << "Version: " << version << std::endl;
+	}
 
 
 	bool waiting = true;
@@ -64,7 +108,9 @@ int main()
 		array = findFile(setting.folder);		
 
 		// конвертируем полученный вектор в формате std::filesystem::path в string и записываем путь до файла в структуру
-		setting.filename = array[0].string();
+		if(array.size()>0)
+			setting.filename = array[0].string();
+
 
 		//переименовываем файл, иначе если русские буквы в имени - то открыть не можем.....
 		const char* oldName = setting.filename.c_str();
@@ -77,7 +123,9 @@ int main()
 		array = findFile(setting.folder);
 
 		// конвертируем полученный вектор в формате std::filesystem::path в string и записываем путь до файла в структуру
-		setting.filename = array[0].string();
+		if (array.size() > 0)
+			setting.filename = array[0].string();
+
 
 		if (setting.filename != "")
 		{	
@@ -87,6 +135,7 @@ int main()
 			nanodbc::connection connection(setting.odbcname);
 
 			//создаем переменную класса workbook и загружаем в нее наш эксель файл
+
 			xlnt::workbook wb;
 			wb.load(setting.filename);
 			auto ws = wb.active_sheet();
@@ -112,9 +161,6 @@ int main()
 				//чистим таблицу
 				nanodbc::execute(connection, clearTableScript);
 
-
-
-				
 				for (auto row : ws.rows(false))
 				{
 					std::string insertTableScript = "insert into public." + setting.tableName + "(";
@@ -169,10 +215,21 @@ int main()
 				logfile << currentTime() << "Close app with error..." << std::endl;
 				return -1;
 			}
+			waiting = true;
 		}
 
-		if(waiting)
+		if (once)
+		{
+			logfile << currentTime() << "Programm finished" << std::endl;
+			return 0;
+		}
+
+		if (waiting)
+		{
 			logfile << currentTime() << "Waiting..." << std::endl;
+			waiting = false;
+		}
+			
 
 		std::chrono::milliseconds timespan(stoi(setting.minute) * 1000 * 60);
 		std::this_thread::sleep_for(timespan);
