@@ -24,7 +24,7 @@ typedef struct Settings
     std::string minute = "1";
 };
 
-std::string currentTime();
+std::string currentTime(int index = 1);
 bool iniParse(Settings& params);
 std::string constructInsertScript(nanodbc::result& results, Settings& setting);
 std::vector<std::filesystem::path> findFile(std::string path);
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 {
     setlocale(LC_ALL, "Russian");
 
-	std::string version = "0.0.1";
+	std::string version = "0.1a";
 
 	bool once = false;
 	bool help = false;
@@ -68,6 +68,23 @@ int main(int argc, char* argv[])
 		::ShowWindow(::GetConsoleWindow(), SW_HIDE);
 	}
 	
+	//проверка на размер лог файла
+
+	std::ifstream logSize("Log.txt");
+	int size = 0;
+	logSize.seekg(0, std::ios::end);
+	size = logSize.tellg();
+	logSize.close();
+
+	if (size > 20971520)
+	{
+		std::string changeLogname = "Log" + currentTime(0) + ".txt";
+		const char* one = "Log.txt";
+		const char* two = changeLogname.c_str();
+		rename(one, two);
+	}
+	
+	//------------------------------
 
     Settings setting;
 
@@ -76,16 +93,16 @@ int main(int argc, char* argv[])
 	//проверяем ини файл, если нет то закрываемся
     if (!iniParse(setting))
     {
-        logfile << currentTime() << "Can't open settings.ini" << std::endl;
+        logfile << currentTime(1) << "Can't open settings.ini" << std::endl;
         return -1;
     }
 
-	logfile << currentTime() << "Starting..." << std::endl;
+	logfile << currentTime(1) << "Starting..." << std::endl;
 
 	if (showVersoin)
 	{
-		logfile << currentTime() << "Version: " << version << std::endl;
-		std::cout << currentTime() << "Version: " << version << std::endl;
+		logfile << currentTime(1) << "Version: " << version << std::endl;
+		std::cout << currentTime(1) << "Version: " << version << std::endl;
 	}
 
 
@@ -99,8 +116,8 @@ int main(int argc, char* argv[])
 		//если папки к файлу нет, то пишем в лог и выключаемся
 		if (!std::filesystem::exists(setting.folder))
 		{
-			logfile << currentTime() << "Path: " << setting.folder << " - not exist" << std::endl;
-			logfile << currentTime() << "Close app with error..." << std::endl;
+			logfile << currentTime(1) << "Path: " << setting.folder << " - not exist" << std::endl;
+			logfile << currentTime(1) << "Close app with error..." << std::endl;
 			return -1;
 		}
 
@@ -206,13 +223,13 @@ int main(int argc, char* argv[])
 					}	
 				}
 
-				logfile << currentTime() << "Successfully imported" << std::endl;
+				logfile << currentTime(1) << "Successfully imported" << std::endl;
 				remove(setting.filename.c_str());
 			}
 			else
 			{
-				logfile << currentTime() << "Incorrect file! the number of columns in the file does not correspond to the number of columns in the table" << std::endl;
-				logfile << currentTime() << "Close app with error..." << std::endl;
+				logfile << currentTime(1) << "Incorrect file! the number of columns in the file does not correspond to the number of columns in the table" << std::endl;
+				logfile << currentTime(1) << "Close app with error..." << std::endl;
 				return -1;
 			}
 			waiting = true;
@@ -220,13 +237,13 @@ int main(int argc, char* argv[])
 
 		if (once)
 		{
-			logfile << currentTime() << "Programm finished" << std::endl;
+			logfile << currentTime(1) << "Programm finished" << std::endl;
 			return 0;
 		}
 
 		if (waiting)
 		{
-			logfile << currentTime() << "Waiting..." << std::endl;
+			logfile << currentTime(1) << "Waiting..." << std::endl;
 			waiting = false;
 		}
 			
@@ -240,13 +257,23 @@ int main(int argc, char* argv[])
 
 
 
-
-std::string currentTime()
+//index 1 = для лога, остальное для переименования файла
+std::string currentTime(int index)
 {
-    std::time_t time = std::time(0);
-    std::tm* now = std::localtime(&time);
-    char buffer[80];
-    strftime(buffer, 80, "%d.%m.%Y %H:%M%p ", now);
+	char buffer[80];
+	if (index == 1)
+	{
+		std::time_t time = std::time(0);
+		std::tm* now = std::localtime(&time);		
+		strftime(buffer, 80, "%d.%m.%Y %H:%M%p ", now);
+	}
+	else
+	{
+		std::time_t time = std::time(0);
+		std::tm* now = std::localtime(&time);
+		strftime(buffer, 80, "_%d_%m_%Y", now);
+	}
+
 
     return buffer;
 }
