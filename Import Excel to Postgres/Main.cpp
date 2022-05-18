@@ -8,7 +8,7 @@
 #include <thread>
 #include <Windows.h>
 
-typedef struct Settings
+struct Settings
 {
     std::vector <std::string> columnNames;
     std::string odbcname = "dsn=Wanted";
@@ -18,6 +18,7 @@ typedef struct Settings
     std::string tableName = "wanted";
     bool deletexlsfile = true;
     bool deletedebugfiles = true;
+	bool server = false;
     std::string filename = "";
     std::string logFileName = "Log.txt";
     std::string settingsfile = "settings.ini";
@@ -367,6 +368,24 @@ bool iniParse(Settings& params)
 				for (int j = i + 2; j < str.length(); j++)
 				{
 					params.minute += str[j];
+				}
+			}
+			else  if (temp == "deletedebugfiles")
+			{
+				params.server = false;
+				std::string server = "";
+				for (int j = i + 2; j < str.length(); j++)
+				{
+
+					server += str[j];
+					if (server == "true")
+					{
+						params.server = true;
+					}
+					else if (server == "false")
+					{
+						params.server = false;
+					}
 				}
 			}
 		}
